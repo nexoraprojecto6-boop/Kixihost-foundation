@@ -18,20 +18,19 @@ export interface GitHubAppConfig {
 
 export interface GitHubAppService {
   getInstallationAccessToken(installationId: number): Promise<string>;
-  listAccessibleRepositories(installationId: number): Promise
-    Array<{ id: number; fullName: string; defaultBranch: string; private: boolean }>
-  >;
-  fetchCommit(installationId: number, repoFullName: string, sha: string): Promise<{
-    sha: string;
-    message: string;
-    author: string;
-  }>;
+  listAccessibleRepositories(
+    installationId: number,
+  ): Promise<Array<{ id: number; fullName: string; defaultBranch: string; private: boolean }>>;
+  fetchCommit(
+    installationId: number,
+    repoFullName: string,
+    sha: string,
+  ): Promise<{ sha: string; message: string; author: string }>;
 }
 
 export class GitHubAppClient implements GitHubAppService {
   constructor(private readonly config: GitHubAppConfig) {}
 
-  /** JWT de app (10 min), usado só para trocar por um installation access token. */
   private createAppJwt(): string {
     const now = Math.floor(Date.now() / 1000);
     return jwt.sign(
