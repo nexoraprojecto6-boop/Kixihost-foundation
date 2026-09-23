@@ -6,6 +6,10 @@
   "types": "src/index.ts",
   "dependencies": {
     "@kixihost/shared": "workspace:*",
-    "@kixihost/security": "workspace:*"
+    "@kixihost/security": "workspace:*",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7"
   }
 }
