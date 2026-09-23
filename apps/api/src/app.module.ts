@@ -7,4 +7,4 @@ import { ProjectsModule } from "./modules/projects/projects.module";
 @Module({
   imports: [PrismaModule, AuthModule, GitHubModule, ProjectsModule],
 })
-export class ProjectsModuleRoot {}
+export class AppModule {}
