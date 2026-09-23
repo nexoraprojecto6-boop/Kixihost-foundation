@@ -1,21 +1,21 @@
 // @kixihost/database
 //
 // Ponto de entrada único para acesso à base de dados. Nenhum outro
-// package ou app deve importar `@prisma/client` directamente — tudo
-// passa por aqui, para que possamos controlar connection pooling,
-// logging de queries e futuras migrações de ORM num único lugar.
+// package ou app deve importar `@prisma/client` directamente.
 
 export { PrismaClient } from "@prisma/client";
 export type * from "@prisma/client";
+export { PrismaService } from "./prisma.service";
+export { PrismaModule } from "./prisma.module";
 
 import { PrismaClient } from "@prisma/client";
 
 let client: PrismaClient | undefined;
 
 /**
- * Devolve uma instância singleton do PrismaClient.
- * Não é chamada durante a criação da fundação — apenas definida
- * para uso futuro pelas apps (api, worker).
+ * Singleton simples para uso fora do contexto NestJS (ex.: worker,
+ * scripts de seed/manutenção). Dentro da API, preferir sempre
+ * `PrismaService` injectado via `PrismaModule`.
  */
 export function getDatabaseClient(): PrismaClient {
   if (!client) {
