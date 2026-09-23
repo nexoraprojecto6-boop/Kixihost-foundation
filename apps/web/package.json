@@ -14,11 +14,11 @@
     "@kixihost/i18n": "workspace:*",
     "@kixihost/shared": "workspace:*",
     "next": "^14.2.0",
-    "react": "^18.3.0",
+    "react": "^19.3.0",
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.0",
+    "@types/react": "^19.3.0",
     "@types/node": "^22.7.0",
     "tailwindcss": "^3.4.0",
     "postcss": "^8.4.0",
