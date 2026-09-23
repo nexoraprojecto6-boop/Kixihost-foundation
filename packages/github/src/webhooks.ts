@@ -1,8 +1,5 @@
 import { verifyHmacSignature } from "@kixihost/security";
 
-// Verificação de webhooks do GitHub (push, pull_request, installation).
-// GITHUB_WEBHOOK_SECRET nunca deve ser exposto fora deste package.
-
 export function verifyGitHubWebhookSignature(
   rawBody: string,
   signatureHeader: string,
@@ -13,14 +10,32 @@ export function verifyGitHubWebhookSignature(
 
 export interface GitHubPushEvent {
   repositoryFullName: string;
-  ref: string; // e.g. "refs/heads/main"
+  ref: string;
   headCommitSha: string;
   headCommitMessage: string;
   installationId: number;
 }
 
-// TODO(Fase 2): parsing completo do payload real do evento `push`
-// segundo a documentação oficial do GitHub Webhooks.
-export function parseGitHubPushEvent(_rawPayload: unknown): GitHubPushEvent {
-  throw new Error("parseGitHubPushEvent: not yet implemented (Fase 2)");
+interface RawGitHubPushPayload {
+  ref: string;
+  after: string;
+  repository: { full_name: string };
+  installation?: { id: number };
+  head_commit?: { message: string };
+}
+
+export function parseGitHubPushEvent(rawPayload: unknown): GitHubPushEvent {
+  const payload = rawPayload as RawGitHubPushPayload;
+
+  if (!payload.repository?.full_name || !payload.after || !payload.ref) {
+    throw new Error("Payload de push do GitHub inválido ou incompleto");
+  }
+
+  return {
+    repositoryFullName: payload.repository.full_name,
+    ref: payload.ref,
+    headCommitSha: payload.after,
+    headCommitMessage: payload.head_commit?.message ?? "",
+    installationId: payload.installation?.id ?? 0,
+  };
 }
