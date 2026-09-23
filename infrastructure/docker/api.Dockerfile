@@ -2,7 +2,7 @@
 # Construído pelo GitHub Actions / Worker em produção, nunca localmente
 # como dependência de deployment (ver regra 46).
 
-FROM node:20-alpine AS base
+FROM node:25-alpine AS base
 WORKDIR /app
 RUN corepack enable
 
