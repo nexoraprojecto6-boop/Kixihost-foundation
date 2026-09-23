@@ -1,0 +1,45 @@
+name: Deploy
+
+# Único ponto de entrada para deployment de produção. Nunca é
+# executado a partir de um computador local — só corre na cloud, a
+# partir de pushes/merges em `main` (ver regras 3-4-51-52).
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-push-images:
+    runs-on: ubuntu-latest
+    needs: []
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to container registry
+        run: echo "TODO(Fase 13): autenticar no registry de containers"
+
+      - name: Build & push API image
+        run: echo "TODO(Fase 13): docker build -f infrastructure/docker/api.Dockerfile"
+
+      - name: Build & push Worker image
+        run: echo "TODO(Fase 13): docker build -f infrastructure/docker/worker.Dockerfile"
+
+      - name: Build & push Web image
+        run: echo "TODO(Fase 13): docker build -f infrastructure/docker/web.Dockerfile"
+
+      - name: Build & push Admin image
+        run: echo "TODO(Fase 13): docker build -f infrastructure/docker/admin.Dockerfile"
+
+  deploy-to-production:
+    runs-on: ubuntu-latest
+    needs: build-and-push-images
+    environment: production
+    steps:
+      - name: Apply infrastructure changes
+        run: echo "TODO(Fase 13): terraform apply -chdir=infrastructure/terraform/environments/production"
+
+      - name: Roll out new versions
+        run: echo "TODO(Fase 13): accionar rollout controlado (traffic switch) no Control Plane"
+
+      - name: Post-deploy health check
+        run: echo "TODO(Fase 13): verificar health checks antes de finalizar"

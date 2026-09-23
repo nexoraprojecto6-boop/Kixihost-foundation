@@ -1,0 +1,591 @@
+// KixiHost — Prisma schema (fundação)
+//
+// Este schema representa o modelo de dados core do Control Plane.
+// Não corresponde a uma base de dados a ser executada nesta fase —
+// apenas a definição estática do modelo, alinhada com o documento
+// de arquitectura em docs/architecture/database.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & Access
+// ---------------------------------------------------------------------------
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  fullName         String?
+  phone            String?
+  province         String?
+  municipality     String?
+  address          String?
+  status           UserStatus @default(ACTIVE)
+  termsAcceptedAt  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  sessions         Session[]
+  mfaFactors       MFAFactor[]
+  githubAccount    GitHubAccount?
+  projects         Project[]
+  wallet           Wallet?
+  subscriptions    Subscription[]
+  payments         Payment[]
+  notifications    Notification[]
+  supportTickets   SupportTicket[]
+  auditLogsAsActor AuditLog[]       @relation("AuditLogActor")
+  adminRoles       AdminRoleAssignment[]
+
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+  PENDING_ONBOARDING
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model MFAFactor {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       MFAType
+  secret     String // encrypted at rest — see packages/security
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@map("mfa_factors")
+}
+
+enum MFAType {
+  TOTP
+  WEBAUTHN
+  SMS
+}
+
+// ---------------------------------------------------------------------------
+// GitHub integration
+// ---------------------------------------------------------------------------
+
+model GitHubAccount {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubUserId  BigInt   @unique
+  username      String
+  accessToken   String // encrypted at rest
+  refreshToken  String? // encrypted at rest
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  installations GitHubInstallation[]
+
+  @@map("github_accounts")
+}
+
+model GitHubInstallation {
+  id              String   @id @default(cuid())
+  githubAccountId String
+  githubAccount   GitHubAccount @relation(fields: [githubAccountId], references: [id], onDelete: Cascade)
+  installationId  BigInt   @unique
+  accountLogin    String
+  accountType     String // User | Organization
+  createdAt       DateTime @default(now())
+
+  repositories    Repository[]
+
+  @@map("github_installations")
+}
+
+model Repository {
+  id             String   @id @default(cuid())
+  installationId String
+  installation   GitHubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  githubRepoId   BigInt   @unique
+  fullName       String // owner/repo
+  defaultBranch  String   @default("main")
+  private        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  projects       Project[]
+
+  @@map("repositories")
+}
+
+// ---------------------------------------------------------------------------
+// Projects & Deployments
+// ---------------------------------------------------------------------------
+
+model Project {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositoryId   String
+  repository     Repository @relation(fields: [repositoryId], references: [id])
+  name           String
+  slug           String   @unique
+  framework      String? // detectado automaticamente
+  rootDirectory  String   @default(".")
+  buildCommand   String?
+  outputDirectory String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  environments   ProjectEnvironment[]
+  deployments    Deployment[]
+  domains        Domain[]
+  usageMeters    UsageMeter[]
+
+  @@map("projects")
+}
+
+model ProjectEnvironment {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String // production | preview | development
+  variables Json // encrypted blob of key/value env vars
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, name])
+  @@map("project_environments")
+}
+
+enum DeploymentStatus {
+  QUEUED
+  BUILDING
+  BUILT
+  DEPLOYING
+  HEALTH_CHECK
+  ACTIVE
+  FAILED
+  ROLLED_BACK
+  CANCELLED
+}
+
+model Deployment {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  commitSha     String
+  commitMessage String?
+  branch        String
+  status        DeploymentStatus @default(QUEUED)
+  triggeredBy   String // userId or "webhook"
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  logs          DeploymentLog[]
+  artifacts     DeploymentArtifact[]
+  versions      DeploymentVersion[]
+  events        DeploymentEvent[]
+
+  @@index([projectId, status])
+  @@map("deployments")
+}
+
+model DeploymentLog {
+  id           String   @id @default(cuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  stage        String // build | deploy | runtime | health_check | domain | ssl
+  message      String // sanitized/redacted before persistence
+  level        String @default("info")
+  createdAt    DateTime @default(now())
+
+  @@index([deploymentId, stage])
+  @@map("deployment_logs")
+}
+
+model DeploymentArtifact {
+  id           String   @id @default(cuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  type         String // image | build-output
+  reference    String // e.g. container registry reference
+  sizeBytes    BigInt?
+  createdAt    DateTime @default(now())
+
+  @@map("deployment_artifacts")
+}
+
+model DeploymentVersion {
+  id           String   @id @default(cuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  isActive     Boolean  @default(false)
+  activatedAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  @@map("deployment_versions")
+}
+
+model DeploymentEvent {
+  id           String   @id @default(cuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  fromStatus   DeploymentStatus?
+  toStatus     DeploymentStatus
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  @@map("deployment_events")
+}
+
+// ---------------------------------------------------------------------------
+// Infrastructure
+// ---------------------------------------------------------------------------
+
+model InfrastructureProvider {
+  id        String   @id @default(cuid())
+  name      String   @unique // digitalocean | hetzner | ovh
+  enabled   Boolean  @default(true)
+  region    String?
+  createdAt DateTime @default(now())
+
+  servers   Server[]
+
+  @@map("infrastructure_providers")
+}
+
+model Server {
+  id           String   @id @default(cuid())
+  providerId   String
+  provider     InfrastructureProvider @relation(fields: [providerId], references: [id])
+  externalId   String // ID do recurso no provider
+  hostname     String
+  ipAddress    String?
+  status       String // provisioning | healthy | unhealthy | draining | terminated
+  cpuCores     Int?
+  memoryMb     Int?
+  diskGb       Int?
+  createdAt    DateTime @default(now())
+
+  allocations  ServerAllocation[]
+  healthChecks ServerHealthCheck[]
+
+  @@map("servers")
+}
+
+model ServerAllocation {
+  id        String   @id @default(cuid())
+  serverId  String
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  projectId String
+  createdAt DateTime @default(now())
+
+  @@map("server_allocations")
+}
+
+model ServerHealthCheck {
+  id        String   @id @default(cuid())
+  serverId  String
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  status    String // pass | fail
+  latencyMs Int?
+  checkedAt DateTime @default(now())
+
+  @@map("server_health_checks")
+}
+
+// ---------------------------------------------------------------------------
+// Domains & SSL
+// ---------------------------------------------------------------------------
+
+model Domain {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  hostname      String   @unique
+  isSubdomain   Boolean  @default(true) // e.g. *.kixihost.ao
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  verifications DomainVerification[]
+  certificates  Certificate[]
+
+  @@map("domains")
+}
+
+model DomainVerification {
+  id        String   @id @default(cuid())
+  domainId  String
+  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  method    String // TXT | CNAME
+  token     String
+  verifiedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("domain_verifications")
+}
+
+model Certificate {
+  id         String   @id @default(cuid())
+  domainId   String
+  domain     Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  issuer     String @default("cloudflare")
+  status     String // pending | active | expired | failed
+  issuedAt   DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@map("certificates")
+}
+
+// ---------------------------------------------------------------------------
+// Billing, Wallet & Payments
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  priceKz       Int // preço mensal em Kwanzas
+  trialDays     Int      @default(21)
+  resourceLimits Json
+  createdAt     DateTime @default(now())
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        Plan     @relation(fields: [planId], references: [id])
+  status      String // trialing | active | past_due | cancelled
+  trialEndsAt DateTime?
+  currentPeriodEnd DateTime?
+  createdAt   DateTime @default(now())
+
+  invoices    Invoice[]
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  amountKz       Int
+  status         String // pending | paid | failed
+  dueAt          DateTime
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  @@map("invoices")
+}
+
+model Wallet {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceKz     Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  transactions  WalletTransaction[]
+  creditGrants  CreditGrant[]
+
+  @@map("wallets")
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  SUBSCRIPTION_DEBIT
+  PROMOTIONAL_CREDIT
+  REFUND
+  ADJUSTMENT
+}
+
+model WalletTransaction {
+  id        String   @id @default(cuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type      WalletTransactionType
+  amountKz  Int // positivo = crédito, negativo = débito
+  reference String? // e.g. paymentId or invoiceId
+  createdAt DateTime @default(now())
+
+  @@map("wallet_transactions")
+}
+
+model CreditGrant {
+  id        String   @id @default(cuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amountKz  Int
+  reason    String
+  grantedByAdminId String
+  createdAt DateTime @default(now())
+
+  @@map("credit_grants")
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        String // paypay | emis | multicaixa
+  providerRef     String // transaction ID do provider
+  kixihostRef     String   @unique // referência interna gerada no checkout
+  amountKz        Int
+  currency        String   @default("AOA")
+  status          PaymentStatus @default(PENDING)
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  @@unique([provider, providerRef])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications, Audit, Incidents, Support
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("AuditLogActor", fields: [actorId], references: [id])
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@map("audit_logs")
+}
+
+model Incident {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  severity    String // low | medium | high | critical
+  status      String // investigating | identified | monitoring | resolved
+  startedAt   DateTime @default(now())
+  resolvedAt  DateTime?
+
+  @@map("incidents")
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  status    String // open | pending | resolved | closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("support_tickets")
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks & Idempotency
+// ---------------------------------------------------------------------------
+
+model WebhookEvent {
+  id         String   @id @default(cuid())
+  source     String // github | paypay | emis | multicaixa
+  eventType  String
+  payloadHash String
+  processedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([source, payloadHash])
+  @@map("webhook_events")
+}
+
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  scope     String // e.g. "payment.webhook" | "deployment.create"
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("idempotency_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Usage & Admin
+// ---------------------------------------------------------------------------
+
+model UsageMeter {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  metric     String // cpu_seconds | memory_mb_hours | bandwidth_mb | requests
+  value      Float
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([projectId, metric, periodStart])
+  @@map("usage_meters")
+}
+
+model AdminRole {
+  id          String   @id @default(cuid())
+  name        String   @unique // Support | Operations | Billing | Security | SuperAdmin
+  permissions Json // lista de permissions codificadas
+
+  assignments AdminRoleAssignment[]
+
+  @@map("admin_roles")
+}
+
+model AdminRoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      AdminRole @relation(fields: [roleId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@map("admin_role_assignments")
+}

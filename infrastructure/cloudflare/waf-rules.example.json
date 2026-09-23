@@ -1,0 +1,15 @@
+{
+  "_comment": "Exemplo ilustrativo de regras WAF — não são regras activas. Confirmar sintaxe real na API Cloudflare antes de aplicar (Fase 7/13).",
+  "rules": [
+    {
+      "description": "Bloquear tráfego de bots conhecidos maliciosos",
+      "expression": "(cf.client.bot) and not (cf.verified_bot)",
+      "action": "block"
+    },
+    {
+      "description": "Rate limit em endpoints de autenticação",
+      "expression": "(http.request.uri.path contains \"/auth/\")",
+      "action": "challenge"
+    }
+  ]
+}

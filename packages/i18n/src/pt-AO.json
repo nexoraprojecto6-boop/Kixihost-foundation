@@ -1,0 +1,40 @@
+{
+  "common": {
+    "loading": "A carregar...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "back": "Voltar"
+  },
+  "onboarding": {
+    "continueWithGithub": "Continuar com GitHub",
+    "fullName": "Nome completo",
+    "phone": "Telefone",
+    "province": "Província",
+    "municipality": "Município",
+    "address": "Endereço",
+    "acceptTerms": "Aceito os termos e condições"
+  },
+  "deployment": {
+    "queued": "Em fila",
+    "building": "A construir",
+    "deploying": "A publicar",
+    "active": "Activo",
+    "failed": "Falhou",
+    "rolledBack": "Revertido",
+    "rollback": "Reverter",
+    "retry": "Tentar novamente",
+    "viewLogs": "Ver logs"
+  },
+  "billing": {
+    "currentBalance": "Saldo actual",
+    "nextDebit": "Próximo débito",
+    "daysRemaining": "Dias restantes",
+    "history": "Histórico",
+    "addBalance": "Adicionar saldo"
+  },
+  "errors": {
+    "genericTitle": "Ocorreu um problema",
+    "infrastructureUnavailable": "Serviço temporariamente indisponível"
+  }
+}

@@ -1,0 +1,12 @@
+# Exemplo ilustrativo de configuração Prometheus para o KixiHost.
+# Não executado nesta fase — apenas placeholder de fundação (Fase 10).
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "kixihost-api"
+    static_configs:
+      - targets: ["api:4000"]
+  - job_name: "kixihost-worker"
+    static_configs:
+      - targets: ["worker:9100"]

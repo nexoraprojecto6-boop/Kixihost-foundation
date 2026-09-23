@@ -1,0 +1,30 @@
+{
+  "name": "@kixihost/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start:prod": "node dist/main.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kixihost/database": "workspace:*",
+    "@kixihost/deployments": "workspace:*",
+    "@kixihost/providers": "workspace:*",
+    "@kixihost/domains": "workspace:*",
+    "@kixihost/billing": "workspace:*",
+    "@kixihost/payments": "workspace:*",
+    "@kixihost/logging": "workspace:*",
+    "@kixihost/monitoring": "workspace:*",
+    "@kixihost/notifications": "workspace:*",
+    "@kixihost/shared": "workspace:*",
+    "bullmq": "^5.13.0",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/node": "^22.7.0"
+  }
+}

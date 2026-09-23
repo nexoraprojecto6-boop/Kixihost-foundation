@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "composite": false,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@kixihost/database": ["packages/database/src"],
+      "@kixihost/auth": ["packages/auth/src"],
+      "@kixihost/security": ["packages/security/src"],
+      "@kixihost/providers": ["packages/providers/src"],
+      "@kixihost/deployments": ["packages/deployments/src"],
+      "@kixihost/billing": ["packages/billing/src"],
+      "@kixihost/payments": ["packages/payments/src"],
+      "@kixihost/logging": ["packages/logging/src"],
+      "@kixihost/monitoring": ["packages/monitoring/src"],
+      "@kixihost/domains": ["packages/domains/src"],
+      "@kixihost/github": ["packages/github/src"],
+      "@kixihost/notifications": ["packages/notifications/src"],
+      "@kixihost/validation": ["packages/validation/src"],
+      "@kixihost/shared": ["packages/shared/src"],
+      "@kixihost/ui": ["packages/ui/src"],
+      "@kixihost/i18n": ["packages/i18n/src"],
+      "@kixihost/config": ["packages/config/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next", "coverage"]
+}

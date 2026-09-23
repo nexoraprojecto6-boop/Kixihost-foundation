@@ -1,0 +1,40 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back"
+  },
+  "onboarding": {
+    "continueWithGithub": "Continue with GitHub",
+    "fullName": "Full name",
+    "phone": "Phone",
+    "province": "Province",
+    "municipality": "Municipality",
+    "address": "Address",
+    "acceptTerms": "I accept the terms and conditions"
+  },
+  "deployment": {
+    "queued": "Queued",
+    "building": "Building",
+    "deploying": "Deploying",
+    "active": "Active",
+    "failed": "Failed",
+    "rolledBack": "Rolled back",
+    "rollback": "Rollback",
+    "retry": "Retry",
+    "viewLogs": "View logs"
+  },
+  "billing": {
+    "currentBalance": "Current balance",
+    "nextDebit": "Next debit",
+    "daysRemaining": "Days remaining",
+    "history": "History",
+    "addBalance": "Add balance"
+  },
+  "errors": {
+    "genericTitle": "Something went wrong",
+    "infrastructureUnavailable": "Service temporarily unavailable"
+  }
+}
