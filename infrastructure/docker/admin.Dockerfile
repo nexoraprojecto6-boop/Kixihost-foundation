@@ -1,5 +1,5 @@
 # KixiHost Admin — multi-stage Dockerfile
-FROM node:20-alpine AS base
+FROM node:25-alpine AS base
 WORKDIR /app
 RUN corepack enable
 
