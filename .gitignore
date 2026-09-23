@@ -48,3 +48,4 @@ Thumbs.db
 # Misc
 *.tsbuildinfo
 .eslintcache
+package-lock.json
