@@ -1,0 +1,21 @@
+# Cloud-init aplicado a cada Droplet provisionado pelo KixiHost.
+# A imagem base já vem com Docker (marketplace "docker-20-04"); aqui
+# instalamos apenas o Caddy, usado como reverse proxy leve para o
+# deploy blue/green (porta 80 pública → porta interna do container
+# activo, alternando entre 8080/8081 a cada deployment).
+
+#cloud-config
+package_update: true
+packages:
+  - caddy
+
+write_files:
+  - path: /etc/caddy/Caddyfile
+    content: |
+      :80 {
+        reverse_proxy localhost:8080
+      }
+
+runcmd:
+  - systemctl enable caddy
+  - systemctl restart caddy
