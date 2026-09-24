@@ -1,29 +1,30 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import { ProviderFactory } from "@kixihost/providers";
 import { prisma } from "./prisma";
 import { waitForSshReady, type SshTarget } from "./ssh-exec";
 
 const CLOUD_INIT = readFileSync(
-  new URL("../../../../infrastructure/docker/droplet-cloud-init.yaml", import.meta.url),
+  path.join(__dirname, "../../../../infrastructure/docker/droplet-cloud-init.yaml"),
   "utf-8",
 );
 
 const providerFactory = new ProviderFactory({
-  digitalocean: { apiToken: process.env.DIGITALOCEAN_API_TOKEN ?? "" },
+  digitalocean: {
+    apiToken: process.env.DIGITALOCEAN_API_TOKEN ?? "",
+    sshKeyId: process.env.DIGITALOCEAN_SSH_KEY_ID ?? "",
+  },
 });
 
 const SSH_PRIVATE_KEY_PATH = process.env.KIXIHOST_SSH_PRIVATE_KEY_PATH ?? "/etc/kixihost/deploy_key";
 const DEFAULT_REGION = "fra1";
 
 export interface ProvisionedServer {
-  serverId: string; // id do registo Server na nossa base de dados
+  serverId: string;
   ipAddress: string;
   ssh: SshTarget;
 }
 
-// Garante que existe um servidor DigitalOcean activo e pronto (SSH
-// disponível) para o projecto indicado, reaproveitando-o entre
-// deployments em vez de criar um Droplet novo a cada push.
 export async function ensureProjectServer(projectId: string): Promise<ProvisionedServer> {
   const provider = providerFactory.create("digitalocean");
 
@@ -43,7 +44,7 @@ export async function ensureProjectServer(projectId: string): Promise<Provisione
       projectId,
       region: DEFAULT_REGION,
       size: "small",
-      image: CLOUD_INIT, // ver nota no digitalocean-provider.ts sobre este campo
+      image: CLOUD_INIT,
     });
 
     const server = await prisma.server.create({
@@ -61,7 +62,6 @@ export async function ensureProjectServer(projectId: string): Promise<Provisione
     });
   }
 
-  // Espera o Droplet ficar `active` e obter IP público, se ainda não tiver.
   let server = serverRecord.server;
   if (server.status !== "healthy" || !server.ipAddress) {
     for (let attempt = 0; attempt < 30; attempt++) {
