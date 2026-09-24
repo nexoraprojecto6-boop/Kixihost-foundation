@@ -2,6 +2,7 @@ import type { Job } from "bullmq";
 import { prisma } from "../lib/prisma";
 import { transitionDeployment, writeDeploymentLog } from "../lib/deployment-transitions";
 import { githubAppClient } from "../lib/github-app-client";
+import { ensureProjectServer } from "../lib/server-provisioning";
 import { createWorkspaceDir, destroyWorkspaceDir, downloadAndExtractSource } from "../pipeline/workspace";
 import {
   resolveWorkDir,
@@ -9,16 +10,12 @@ import {
   runFetchSourceStageReal,
   runInstallDependenciesStageReal,
 } from "../pipeline/build-stages";
-import { runContainerizeStage, runHealthCheckStage, runTrafficSwitchStage } from "../pipeline/stub-stages";
+import { runContainerizeStage, runHealthCheckStage, runTrafficSwitchStage } from "../pipeline/container-stages";
 
 export interface DeploymentJobData {
   deploymentId: string;
 }
 
-// Regra crítica: se falhar em qualquer estágio, transiciona para
-// FAILED e propaga o erro — mas NUNCA mexe numa DeploymentVersion
-// anterior já ACTIVE de outro deployment do mesmo projecto (isso só
-// acontece na Fase 5C3, no fim do pipeline, de forma explícita).
 export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise<void> {
   const { deploymentId } = job.data;
 
@@ -59,11 +56,24 @@ export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise
     await transitionDeployment(deploymentId, "BUILT", "build stage completed");
 
     await transitionDeployment(deploymentId, "DEPLOYING", "starting deploy stage");
-    await runContainerizeStage(deploymentId);
+    const { serverId, ssh } = await ensureProjectServer(project.id);
+    const { newPort } = await runContainerizeStage(deploymentId, ssh, workDir);
 
     await transitionDeployment(deploymentId, "HEALTH_CHECK", "container created, running health check");
-    await runHealthCheckStage(deploymentId);
-    await runTrafficSwitchStage(deploymentId);
+    await runHealthCheckStage(deploymentId, ssh, newPort);
+    await runTrafficSwitchStage(deploymentId, ssh, newPort);
+
+    await prisma.deploymentVersion.updateMany({
+      where: { deployment: { projectId: project.id }, isActive: true },
+      data: { isActive: false },
+    });
+    await prisma.deploymentVersion.create({
+      data: { deploymentId, isActive: true, activatedAt: new Date() },
+    });
+    await prisma.serverAllocation.updateMany({
+      where: { projectId: project.id },
+      data: { serverId },
+    });
 
     await transitionDeployment(deploymentId, "ACTIVE", "health check passed, traffic switched");
     await writeDeploymentLog(deploymentId, "deploy", "Deployment concluído com sucesso.");
