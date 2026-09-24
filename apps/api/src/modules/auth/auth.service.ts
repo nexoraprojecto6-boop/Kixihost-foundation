@@ -1,36 +1,22 @@
 import { Injectable } from "@nestjs/common";
-import { getDatabaseClient } from "@kixihost/database";
-import { GitHubOAuthClient, JwtSessionService, type GitHubOAuthProfile } from "@kixihost/auth";
+import { PrismaService } from "@kixihost/database";
+import { GitHubOAuthClient, type GitHubOAuthProfile } from "@kixihost/auth";
 import { KixiError } from "@kixihost/shared";
+import { SessionAuthService } from "./session-auth.service";
 
 @Injectable()
 export class AuthService {
   private readonly oauthClient: GitHubOAuthClient;
-  private readonly sessionService: JwtSessionService;
-  private readonly db = getDatabaseClient();
 
-  constructor() {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sessionAuthService: SessionAuthService,
+  ) {
     this.oauthClient = new GitHubOAuthClient({
       clientId: process.env.GITHUB_CLIENT_ID ?? "",
       clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
       callbackUrl: `${process.env.API_URL}/auth/github/callback`,
     });
-
-    this.sessionService = new JwtSessionService(
-      process.env.SESSION_SECRET ?? "",
-      async (userId, sessionId, expiresAt, ipAddress, userAgent) => {
-        await this.db.session.create({
-          data: { id: sessionId, userId, expiresAt, ipAddress, userAgent },
-        });
-      },
-      async (sessionId) => {
-        const session = await this.db.session.findUnique({ where: { id: sessionId } });
-        return !session || session.expiresAt < new Date();
-      },
-      async (sessionId) => {
-        await this.db.session.delete({ where: { id: sessionId } }).catch(() => undefined);
-      },
-    );
   }
 
   getAuthorizationUrl(state: string): string {
@@ -66,19 +52,19 @@ export class AuthService {
       });
     }
 
-    const user = await this.db.user.upsert({
+    const user = await this.prisma.user.upsert({
       where: { email: profile.email },
       create: { email: profile.email, status: "PENDING_ONBOARDING" },
       update: {},
     });
 
-    await this.db.gitHubAccount.upsert({
+    await this.prisma.gitHubAccount.upsert({
       where: { userId: user.id },
       create: {
         userId: user.id,
         githubUserId: BigInt(profile.githubUserId),
         username: profile.username,
-        accessToken, // TODO(Fase 3): encriptar via @kixihost/security antes de persistir
+        accessToken, // TODO(Fase 3+): encriptar via @kixihost/security antes de persistir
       },
       update: {
         username: profile.username,
@@ -86,10 +72,10 @@ export class AuthService {
       },
     });
 
-    return this.sessionService.create(user.id, ipAddress, userAgent);
+    return this.sessionAuthService.create(user.id, ipAddress, userAgent);
   }
 
   async logout(sessionId: string): Promise<void> {
-    await this.sessionService.revoke(sessionId);
+    await this.sessionAuthService.revoke(sessionId);
   }
 }
