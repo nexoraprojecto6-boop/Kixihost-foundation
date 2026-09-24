@@ -1,28 +1,11 @@
 import { writeDeploymentLog } from "../lib/deployment-transitions";
 
-// Estágios do pipeline, ainda como stubs (C1). Cada estágio real
-// (obter código, instalar dependências, build, testes,
-// containerização, health check, traffic switch) será implementado
-// nas Partes C2/C3 — aqui garantimos apenas que o fluxo de estados e
-// de logs funciona de ponta a ponta.
+// Estágios ainda por implementar de verdade (Fase 5C3): dependem do
+// InfrastructureProvider (packages/providers) para provisionar
+// containers reais na infraestrutura cloud.
 
 async function simulateWork(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export async function runFetchSourceStage(deploymentId: string, commitSha: string): Promise<void> {
-  await writeDeploymentLog(deploymentId, "build", `A obter código do commit ${commitSha} (stub — Fase 5C2)`);
-  await simulateWork(200);
-}
-
-export async function runInstallDependenciesStage(deploymentId: string): Promise<void> {
-  await writeDeploymentLog(deploymentId, "build", "A instalar dependências (stub — Fase 5C2)");
-  await simulateWork(200);
-}
-
-export async function runBuildStage(deploymentId: string): Promise<void> {
-  await writeDeploymentLog(deploymentId, "build", "A construir a aplicação (stub — Fase 5C2)");
-  await simulateWork(200);
 }
 
 export async function runContainerizeStage(deploymentId: string): Promise<void> {
