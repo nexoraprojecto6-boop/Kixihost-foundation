@@ -1,16 +1,14 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "@kixihost/database";
 import { Queue } from "bullmq";
-import { assertTransition } from "@kixihost/deployments";
-
-export const DEPLOYMENT_QUEUE_NAME = "deployments";
+import { assertTransition, DEPLOYMENT_QUEUE_NAME } from "@kixihost/deployments";
 
 export interface CreateDeploymentFromPushInput {
   projectId: string;
   commitSha: string;
   commitMessage: string;
   branch: string;
-  triggeredBy: string; // "webhook" ou userId
+  triggeredBy: string;
 }
 
 @Injectable()
@@ -39,7 +37,6 @@ export class DeploymentsService {
       data: { deploymentId: deployment.id, toStatus: "QUEUED", reason: "created" },
     });
 
-    // Publica o job na queue consumida pelo Worker (Fase 5 — Parte C).
     await this.queue.add(
       "process-deployment",
       { deploymentId: deployment.id },
@@ -78,7 +75,6 @@ export class DeploymentsService {
     return deployment;
   }
 
-  /** Usado pelo Worker (Fase 5 — Parte C) para transicionar o estado com segurança. */
   async transitionStatus(deploymentId: string, toStatus: Parameters<typeof assertTransition>[1], reason?: string) {
     const deployment = await this.prisma.deployment.findUniqueOrThrow({ where: { id: deploymentId } });
     assertTransition(deployment.status as never, toStatus as never);
