@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { transitionDeployment, writeDeploymentLog } from "../lib/deployment-transitions";
 import { githubAppClient } from "../lib/github-app-client";
 import { ensureProjectServer } from "../lib/server-provisioning";
+import { syncWorkspaceToServer } from "../lib/rsync";
 import { createWorkspaceDir, destroyWorkspaceDir, downloadAndExtractSource } from "../pipeline/workspace";
 import {
   resolveWorkDir,
@@ -15,6 +16,8 @@ import { runContainerizeStage, runHealthCheckStage, runTrafficSwitchStage } from
 export interface DeploymentJobData {
   deploymentId: string;
 }
+
+const REMOTE_APP_DIR = "/opt/kixihost/app";
 
 export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise<void> {
   const { deploymentId } = job.data;
@@ -57,7 +60,11 @@ export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise
 
     await transitionDeployment(deploymentId, "DEPLOYING", "starting deploy stage");
     const { serverId, ssh } = await ensureProjectServer(project.id);
-    const { newPort } = await runContainerizeStage(deploymentId, ssh, workDir);
+
+    await writeDeploymentLog(deploymentId, "deploy", "A sincronizar código para o servidor...");
+    await syncWorkspaceToServer({ localDir: workDir, remoteDir: REMOTE_APP_DIR, ssh });
+
+    const { newPort } = await runContainerizeStage(deploymentId, ssh, REMOTE_APP_DIR);
 
     await transitionDeployment(deploymentId, "HEALTH_CHECK", "container created, running health check");
     await runHealthCheckStage(deploymentId, ssh, newPort);
