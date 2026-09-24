@@ -6,7 +6,7 @@ import { OVHProvider } from "../ovh/ovh-provider";
 export type ProviderName = "digitalocean" | "hetzner" | "ovh";
 
 export interface ProviderFactoryConfig {
-  digitalocean?: { apiToken: string };
+  digitalocean?: { apiToken: string; sshKeyId: string };
   hetzner?: { apiToken: string };
   ovh?: {
     endpoint: string;
@@ -16,10 +16,6 @@ export interface ProviderFactoryConfig {
   };
 }
 
-// Única porta de entrada para obter um InfrastructureProvider.
-// Todo o resto do sistema deve depender desta factory, nunca instanciar
-// um provider concreto directamente — isto é o que permite adicionar
-// Hetzner/OVH sem alterar a experiência do utilizador (regra 18).
 export class ProviderFactory {
   constructor(private readonly config: ProviderFactoryConfig) {}
 
@@ -29,7 +25,10 @@ export class ProviderFactory {
         if (!this.config.digitalocean) {
           throw new Error("DigitalOcean provider not configured");
         }
-        return new DigitalOceanProvider(this.config.digitalocean.apiToken);
+        return new DigitalOceanProvider(
+          this.config.digitalocean.apiToken,
+          this.config.digitalocean.sshKeyId,
+        );
       case "hetzner":
         if (!this.config.hetzner) {
           throw new Error("Hetzner provider not configured");
