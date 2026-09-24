@@ -19,9 +19,11 @@
     "@kixihost/logging": "workspace:*",
     "@kixihost/monitoring": "workspace:*",
     "@kixihost/notifications": "workspace:*",
+    "@kixihost/github": "workspace:*",
     "@kixihost/shared": "workspace:*",
     "bullmq": "^5.13.0",
-    "ioredis": "^5.4.1"
+    "ioredis": "^5.4.1",
+    "tar": "^7.4.3"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
