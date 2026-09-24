@@ -7,6 +7,6 @@
   "dependencies": {
     "@kixihost/shared": "workspace:*",
     "@kixihost/providers": "workspace:*",
-    "bullmq": "^5.13.0"
+    "bullmq": "^6.3.8"
   }
 }
