@@ -1,34 +1,60 @@
 import type { Job } from "bullmq";
 import { prisma } from "../lib/prisma";
 import { transitionDeployment, writeDeploymentLog } from "../lib/deployment-transitions";
+import { githubAppClient } from "../lib/github-app-client";
+import { createWorkspaceDir, destroyWorkspaceDir, downloadAndExtractSource } from "../pipeline/workspace";
 import {
-  runBuildStage,
-  runContainerizeStage,
-  runFetchSourceStage,
-  runHealthCheckStage,
-  runInstallDependenciesStage,
-  runTrafficSwitchStage,
-} from "../pipeline/stub-stages";
+  resolveWorkDir,
+  runBuildStageReal,
+  runFetchSourceStageReal,
+  runInstallDependenciesStageReal,
+} from "../pipeline/build-stages";
+import { runContainerizeStage, runHealthCheckStage, runTrafficSwitchStage } from "../pipeline/stub-stages";
 
 export interface DeploymentJobData {
   deploymentId: string;
 }
 
-// Processor principal do pipeline de deployment. Regra crítica: se
-// falhar em qualquer estágio, transiciona para FAILED e propaga o
-// erro — mas NUNCA mexe na DeploymentVersion anterior já ACTIVE de
-// outro deployment do mesmo projecto. Isso é garantido por desenho:
-// só criamos/activamos uma nova versão no fim do pipeline (Fase 5C3).
+// Regra crítica: se falhar em qualquer estágio, transiciona para
+// FAILED e propaga o erro — mas NUNCA mexe numa DeploymentVersion
+// anterior já ACTIVE de outro deployment do mesmo projecto (isso só
+// acontece na Fase 5C3, no fim do pipeline, de forma explícita).
 export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise<void> {
   const { deploymentId } = job.data;
 
-  const deployment = await prisma.deployment.findUniqueOrThrow({ where: { id: deploymentId } });
+  const deployment = await prisma.deployment.findUniqueOrThrow({
+    where: { id: deploymentId },
+    include: {
+      project: {
+        include: { repository: { include: { installation: true } } },
+      },
+    },
+  });
+
+  const { project } = deployment;
+  const { repository } = project;
+  let workspaceDir: string | null = null;
 
   try {
     await transitionDeployment(deploymentId, "BUILDING", "worker started processing");
-    await runFetchSourceStage(deploymentId, deployment.commitSha);
-    await runInstallDependenciesStage(deploymentId);
-    await runBuildStage(deploymentId);
+
+    workspaceDir = await createWorkspaceDir(deploymentId);
+    const installationToken = await githubAppClient.getInstallationAccessToken(
+      Number(repository.installation.installationId),
+    );
+
+    await downloadAndExtractSource({
+      installationToken,
+      repoFullName: repository.fullName,
+      commitSha: deployment.commitSha,
+      targetDir: workspaceDir,
+    });
+    await runFetchSourceStageReal(deploymentId, deployment.commitSha);
+
+    const workDir = resolveWorkDir(workspaceDir, project.rootDirectory);
+
+    await runInstallDependenciesStageReal(deploymentId, workDir);
+    await runBuildStageReal(deploymentId, workDir, project.buildCommand);
 
     await transitionDeployment(deploymentId, "BUILT", "build stage completed");
 
@@ -45,13 +71,15 @@ export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise
     const message = error instanceof Error ? error.message : "Erro desconhecido no pipeline";
     await writeDeploymentLog(deploymentId, "deploy", `Deployment falhou: ${message}`, "error");
 
-    // Só transiciona para FAILED se o estado actual permitir — evita
-    // erro em cascata caso já tenha transicionado antes de falhar.
     const current = await prisma.deployment.findUniqueOrThrow({ where: { id: deploymentId } });
     if (current.status !== "FAILED") {
       await transitionDeployment(deploymentId, "FAILED", message).catch(() => undefined);
     }
 
-    throw error; // propaga para o BullMQ marcar o job como failed
+    throw error;
+  } finally {
+    if (workspaceDir) {
+      await destroyWorkspaceDir(workspaceDir).catch(() => undefined);
+    }
   }
 }
