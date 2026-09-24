@@ -4,6 +4,7 @@ import { transitionDeployment, writeDeploymentLog } from "../lib/deployment-tran
 import { githubAppClient } from "../lib/github-app-client";
 import { ensureProjectServer } from "../lib/server-provisioning";
 import { syncWorkspaceToServer } from "../lib/rsync";
+import { ensureSubdomainForProject } from "../lib/domain-provisioning";
 import { createWorkspaceDir, destroyWorkspaceDir, downloadAndExtractSource } from "../pipeline/workspace";
 import {
   resolveWorkDir,
@@ -59,7 +60,7 @@ export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise
     await transitionDeployment(deploymentId, "BUILT", "build stage completed");
 
     await transitionDeployment(deploymentId, "DEPLOYING", "starting deploy stage");
-    const { serverId, ssh } = await ensureProjectServer(project.id);
+    const { serverId, ipAddress, ssh } = await ensureProjectServer(project.id);
 
     await writeDeploymentLog(deploymentId, "deploy", "A sincronizar código para o servidor...");
     await syncWorkspaceToServer({ localDir: workDir, remoteDir: REMOTE_APP_DIR, ssh });
@@ -83,6 +84,9 @@ export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise
     });
 
     await transitionDeployment(deploymentId, "ACTIVE", "health check passed, traffic switched");
+
+    await ensureSubdomainForProject(deploymentId, project.id, project.slug, ipAddress);
+
     await writeDeploymentLog(deploymentId, "deploy", "Deployment concluído com sucesso.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro desconhecido no pipeline";
