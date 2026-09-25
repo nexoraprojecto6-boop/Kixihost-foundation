@@ -5,6 +5,7 @@ import { githubAppClient } from "../lib/github-app-client";
 import { ensureProjectServer } from "../lib/server-provisioning";
 import { syncWorkspaceToServer } from "../lib/rsync";
 import { ensureSubdomainForProject } from "../lib/domain-provisioning";
+import { ensureTrialStarted } from "../lib/billing";
 import { createWorkspaceDir, destroyWorkspaceDir, downloadAndExtractSource } from "../pipeline/workspace";
 import {
   resolveWorkDir,
@@ -86,6 +87,7 @@ export async function processDeploymentJob(job: Job<DeploymentJobData>): Promise
     await transitionDeployment(deploymentId, "ACTIVE", "health check passed, traffic switched");
 
     await ensureSubdomainForProject(deploymentId, project.id, project.slug, ipAddress);
+    await ensureTrialStarted(project.userId);
 
     await writeDeploymentLog(deploymentId, "deploy", "Deployment concluído com sucesso.");
   } catch (error) {
