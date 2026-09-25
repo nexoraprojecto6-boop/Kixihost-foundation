@@ -22,7 +22,7 @@
     "@kixihost/github": "workspace:*",
     "@kixihost/shared": "workspace:*",
     "bullmq": "^5.13.0",
-    "ioredis": "^5.4.1",
+    "ioredis": "^6.0.0",
     "tar": "^7.4.3",
     "ssh2": "^1.16.0"
   },
