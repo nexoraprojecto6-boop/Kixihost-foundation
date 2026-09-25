@@ -1,19 +1,19 @@
 // Ponto de entrada da API NestJS (Control Plane).
-//
-// Esta app NUNCA executa código de clientes — é responsável apenas por
-// autenticação, projectos, deployments (orquestração), billing,
-// pagamentos, domínios e administração. A execução real das aplicações
-// dos clientes acontece no Data Plane, fora deste processo.
 
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
+import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.use(cookieParser());
+  app.use(json());
+  // A PayPay envia notificações como application/x-www-form-urlencoded
+  // (documentação oficial, secção 4) — necessário para o PayPayController.
+  app.use(urlencoded({ extended: true }));
 
   app.enableCors({
     origin: [process.env.APP_URL ?? "http://localhost:3000"],
