@@ -3,9 +3,6 @@ import type { Response } from "express";
 import { PrismaService } from "@kixihost/database";
 import { PrismaHealthCheckService } from "@kixihost/monitoring";
 
-// Endpoint público (sem SessionGuard) — usado por monitorização
-// externa (uptime checks, load balancer). Nunca expõe detalhes
-// internos além de "healthy: true/false" por serviço.
 @Controller("health")
 export class HealthController {
   private readonly healthCheckService: PrismaHealthCheckService;
