@@ -12,7 +12,7 @@
     "seed": "tsx src/seed/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.20.0",
+    "@prisma/client": "^7.10.0",
     "@kixihost/config": "workspace:*",
     "@nestjs/common": "^10.4.0"
   },
