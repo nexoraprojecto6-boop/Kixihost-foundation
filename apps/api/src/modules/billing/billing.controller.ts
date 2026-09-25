@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
+import { initiateWalletDepositSchema } from "@kixihost/validation";
 import { SessionGuard, type AuthenticatedRequest } from "../auth/session.guard";
 import { BillingService } from "./billing.service";
 
@@ -15,6 +16,12 @@ export class BillingController {
   @Get("wallet/history")
   getHistory(@Req() req: AuthenticatedRequest) {
     return this.billingService.getWalletHistory(req.userId);
+  }
+
+  @Post("wallet/deposit")
+  async deposit(@Req() req: AuthenticatedRequest, @Body() body: unknown) {
+    const input = initiateWalletDepositSchema.parse(body);
+    return this.billingService.initiateWalletDeposit(req.userId, input.amountKz, req.ip ?? "0.0.0.0");
   }
 
   @Get("subscription")
