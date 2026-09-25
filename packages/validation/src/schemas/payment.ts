@@ -6,3 +6,9 @@ export const initiatePaymentSchema = z.object({
 });
 
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;
+
+export const initiateWalletDepositSchema = z.object({
+  amountKz: z.number().int().min(500).max(50_000_000),
+});
+
+export type InitiateWalletDepositInput = z.infer<typeof initiateWalletDepositSchema>;
