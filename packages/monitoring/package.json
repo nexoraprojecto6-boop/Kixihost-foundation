@@ -4,5 +4,8 @@
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "dependencies": {}
+  "dependencies": {
+    "@kixihost/database": "workspace:*",
+    "ioredis": "^5.4.1"
+  }
 }
