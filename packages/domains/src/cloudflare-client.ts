@@ -60,8 +60,9 @@ export class CloudflareClient {
       ttl: 1, // "automatic"
     });
 
-    if (existing.length > 0) {
-      return this.request(`/zones/${this.config.zoneId}/dns_records/${existing[0].id}`, {
+        const existingRecord = existing[0];
+    if (existingRecord) {
+      return this.request(`/zones/${this.config.zoneId}/dns_records/${existingRecord.id}`, {
         method: "PUT",
         body,
       });
