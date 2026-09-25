@@ -5,8 +5,17 @@ import { GitHubModule } from "./modules/github/github.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
 import { DeploymentsModule } from "./modules/deployments/deployments.module";
 import { DomainsModule } from "./modules/domains/domains.module";
+import { BillingModule } from "./modules/billing/billing.module";
 
 @Module({
-  imports: [PrismaModule, AuthModule, GitHubModule, ProjectsModule, DeploymentsModule, DomainsModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    GitHubModule,
+    ProjectsModule,
+    DeploymentsModule,
+    DomainsModule,
+    BillingModule,
+  ],
 })
 export class AppModule {}
