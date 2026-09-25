@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@kixihost/shared": "workspace:*"
+    "@kixihost/shared": "workspace:*",
+    "@kixihost/database": "workspace:*"
   }
 }
