@@ -1,7 +1,12 @@
 import { Module } from "@nestjs/common";
-import { HealthController } from "./health.controller";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { SessionAuthService } from "./session-auth.service";
+import { SessionGuard } from "./session.guard";
 
 @Module({
-  controllers: [HealthController],
+  controllers: [AuthController],
+  providers: [AuthService, SessionAuthService, SessionGuard],
+  exports: [AuthService, SessionAuthService, SessionGuard],
 })
-export class HealthModule {}
+export class AuthModule {}
