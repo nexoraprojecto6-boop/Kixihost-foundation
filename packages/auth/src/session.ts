@@ -12,9 +12,6 @@ export interface SessionService {
   revoke(sessionId: string): Promise<void>;
 }
 
-// Implementação com JWT assinado (SESSION_SECRET) + registo em Session
-// (base de dados) para permitir revogação. O token em si nunca é
-// persistido — apenas o sessionId e metadados.
 export class JwtSessionService implements SessionService {
   constructor(
     private readonly sessionSecret: string,
@@ -27,7 +24,7 @@ export class JwtSessionService implements SessionService {
     ) => Promise<void>,
     private readonly isSessionRevoked: (sessionId: string) => Promise<boolean>,
     private readonly deleteSession: (sessionId: string) => Promise<void>,
-    private readonly ttlSeconds: number = 60 * 60 * 24 * 30, // 30 dias
+    private readonly ttlSeconds: number = 60 * 60 * 24 * 30,
   ) {}
 
   async create(userId: string, ipAddress?: string, userAgent?: string): Promise<string> {
@@ -53,5 +50,11 @@ export class JwtSessionService implements SessionService {
 
   async revoke(sessionId: string): Promise<void> {
     await this.deleteSession(sessionId);
+  }
+
+  /** Reemite o mesmo sessionId com mfaVerified:true — usado depois de um TOTP válido (ver AdminMfaController). */
+  async elevate(userId: string, sessionId: string): Promise<string> {
+    const payload: SessionPayload = { userId, sessionId, mfaVerified: true };
+    return jwt.sign(payload, this.sessionSecret, { expiresIn: this.ttlSeconds });
   }
 }
