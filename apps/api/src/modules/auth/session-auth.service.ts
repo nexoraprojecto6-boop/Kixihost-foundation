@@ -2,9 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "@kixihost/database";
 import { JwtSessionService, type SessionPayload } from "@kixihost/auth";
 
-// Wrapper injetável do JwtSessionService, ligado ao PrismaService do
-// NestJS. Usado tanto pelo AuthService (criar sessão no login) como
-// pelo SessionGuard (verificar sessão em qualquer endpoint protegido).
 @Injectable()
 export class SessionAuthService {
   private readonly sessionService: JwtSessionService;
@@ -37,5 +34,9 @@ export class SessionAuthService {
 
   revoke(sessionId: string): Promise<void> {
     return this.sessionService.revoke(sessionId);
+  }
+
+  elevate(userId: string, sessionId: string): Promise<string> {
+    return this.sessionService.elevate(userId, sessionId);
   }
 }
