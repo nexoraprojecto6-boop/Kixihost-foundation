@@ -8,7 +8,10 @@ export class HealthController {
   private readonly healthCheckService: PrismaHealthCheckService;
 
   constructor(private readonly prisma: PrismaService) {
-    this.healthCheckService = new PrismaHealthCheckService(prisma, process.env.REDIS_URL ?? "redis://localhost:6379");
+    this.healthCheckService = new PrismaHealthCheckService(
+      prisma,
+      process.env.REDIS_URL ?? "redis://localhost:6379",
+    );
   }
 
   @Get()
