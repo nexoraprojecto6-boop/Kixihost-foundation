@@ -33,12 +33,12 @@ export interface RbacService {
 export class PrismaRbacService implements RbacService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async getRoles(userId: string): Promise<AdminRoleName[]> {
+    async getRoles(userId: string): Promise<AdminRoleName[]> {
     const assignments = await this.prisma.adminRoleAssignment.findMany({
       where: { userId },
       include: { role: true },
     });
-    return assignments.map((a) => a.role.name as AdminRoleName);
+    return assignments.map((a: { role: { name: string } }) => a.role.name as AdminRoleName);
   }
 
   async hasPermission(userId: string, permission: AdminPermission): Promise<boolean> {
@@ -46,12 +46,11 @@ export class PrismaRbacService implements RbacService {
       where: { userId },
       include: { role: true },
     });
-    return assignments.some((a) => {
+    return assignments.some((a: { role: { permissions: unknown } }) => {
       const permissions = (a.role.permissions as string[] | null) ?? [];
       return permissions.includes(permission);
     });
   }
-
   async assertPermission(userId: string, permission: AdminPermission): Promise<void> {
     const allowed = await this.hasPermission(userId, permission);
     if (!allowed) {
