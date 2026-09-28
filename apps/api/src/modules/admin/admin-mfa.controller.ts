@@ -4,13 +4,10 @@ import { PrismaService } from "@kixihost/database";
 import { PrismaMfaService } from "@kixihost/auth";
 import { SessionGuard, type AuthenticatedRequest } from "../auth/session.guard";
 import { SessionAuthService } from "../auth/session-auth.service";
+import { RateLimit, RateLimitGuard } from "../auth/rate-limit.guard";
 
 const SESSION_COOKIE = "kixi_session";
 
-// Fluxo: login normal (SessionGuard, mfaVerified:false) → /admin/mfa/enroll
-// (primeira vez) → utilizador configura o TOTP na app autenticadora →
-// /admin/mfa/verify com o código → sessão é reemitida com
-// mfaVerified:true → só então o AdminSessionGuard deixa passar.
 @Controller("admin/mfa")
 export class AdminMfaController {
   private readonly mfaService: PrismaMfaService;
@@ -28,8 +25,11 @@ export class AdminMfaController {
     return this.mfaService.enrollTotp(req.userId);
   }
 
+  // Protecção contra brute force do código TOTP (6 dígitos = só 1M
+  // combinações — sem rate limit seria trivialmente atacável).
   @Post("verify")
-  @UseGuards(SessionGuard)
+  @UseGuards(SessionGuard, RateLimitGuard)
+  @RateLimit({ windowSeconds: 300, maxRequests: 5 })
   async verify(@Req() req: AuthenticatedRequest, @Res() res: Response, @Body("code") code: string) {
     const valid = await this.mfaService.verifyTotp(req.userId, code);
     if (!valid) {
