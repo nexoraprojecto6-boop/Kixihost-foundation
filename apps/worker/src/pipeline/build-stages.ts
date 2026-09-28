@@ -2,14 +2,11 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import { redactString } from "@kixihost/shared";
+import { isSafeRelativePath } from "@kixihost/security";
 import { writeDeploymentLog } from "../lib/deployment-transitions";
 
 const execFileAsync = promisify(execFile);
 
-// Limites de primeira linha de defesa enquanto a containerização real
-// (Fase 5C3) ainda não isola completamente o processo de build.
-// Nunca depender só disto em produção — ver regra 37 (código de
-// clientes é não confiável).
 const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 5 * 1024 * 1024;
 
@@ -58,6 +55,27 @@ export async function runBuildStageReal(
   await writeDeploymentLog(deploymentId, "build", output || "Build concluído.");
 }
 
+// Protecção contra path traversal (regra 36): o rootDirectory de um
+// projecto vem de input do utilizador na criação do projecto (Fase 4)
+// e é persistido — sem esta validação, um valor como "../../etc"
+// permitiria escrever/ler fora do workspace isolado do deployment.
 export function resolveWorkDir(workspaceRoot: string, rootDirectory: string): string {
-  return path.join(workspaceRoot, rootDirectory || ".");
+  const normalized = rootDirectory || ".";
+
+  if (normalized !== "." && !isSafeRelativePath(normalized)) {
+    throw new Error(
+      `rootDirectory inválido: "${normalized}" não é um caminho relativo seguro dentro do workspace.`,
+    );
+  }
+
+  const resolved = path.join(workspaceRoot, normalized);
+  const resolvedNormalized = path.normalize(resolved);
+
+  // Defesa em profundidade: mesmo com isSafeRelativePath a passar,
+  // confirma que o caminho final ainda está dentro do workspaceRoot.
+  if (!resolvedNormalized.startsWith(path.normalize(workspaceRoot))) {
+    throw new Error("rootDirectory resolveu para fora do workspace do deployment — bloqueado.");
+  }
+
+  return resolvedNormalized;
 }
