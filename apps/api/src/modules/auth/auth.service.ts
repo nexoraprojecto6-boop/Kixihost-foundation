@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "@kixihost/database";
 import { GitHubOAuthClient, type GitHubOAuthProfile } from "@kixihost/auth";
 import { KixiError } from "@kixihost/shared";
+import { getEncryptionService } from "@kixihost/security";
 import { SessionAuthService } from "./session-auth.service";
 
 @Injectable()
@@ -58,17 +59,20 @@ export class AuthService {
       update: {},
     });
 
+    const encryptionService = getEncryptionService();
+    const encryptedToken = await encryptionService.encrypt(accessToken);
+
     await this.prisma.gitHubAccount.upsert({
       where: { userId: user.id },
       create: {
         userId: user.id,
         githubUserId: BigInt(profile.githubUserId),
         username: profile.username,
-        accessToken, // TODO(Fase 3+): encriptar via @kixihost/security antes de persistir
+        accessToken: encryptedToken,
       },
       update: {
         username: profile.username,
-        accessToken,
+        accessToken: encryptedToken,
       },
     });
 
