@@ -1,12 +1,3 @@
-// Sistema interno de erros normalizado do KixiHost.
-//
-// Todo o código do Control Plane deve lançar/propagar `KixiError` em vez
-// de erros brutos de providers, bibliotecas HTTP, etc. Erros de terceiros
-// (providers de infraestrutura, pagamentos, GitHub) devem ser traduzidos
-// para KixiError através dos respectivos error mappers antes de chegarem
-// ao utilizador. Ver packages/providers/src/errors e
-// packages/payments/src/*/errors.
-
 export type KixiErrorSeverity = "info" | "warning" | "error" | "critical";
 
 export interface KixiErrorParams {
@@ -16,7 +7,6 @@ export interface KixiErrorParams {
   action?: string;
   severity?: KixiErrorSeverity;
   retryable?: boolean;
-  /** Contexto interno (nunca exposto ao utilizador final). */
   internal?: {
     provider?: string;
     providerError?: string;
@@ -45,7 +35,6 @@ export class KixiError extends Error {
     this.internal = params.internal;
   }
 
-  /** Representação segura para devolver à API/UI — nunca inclui `internal`. */
   toPublicJSON() {
     return {
       code: this.code,
@@ -58,8 +47,6 @@ export class KixiError extends Error {
   }
 }
 
-// Catálogo central de códigos de erro. Adicionar novos códigos aqui
-// mantém o sistema de erros auditável e evita strings soltas no código.
 export const KIXI_ERROR_CODES = [
   "KIXI_DEPLOY_BUILD_FAILED",
   "KIXI_DEPLOY_CONTAINER_FAILED",
@@ -78,6 +65,8 @@ export const KIXI_ERROR_CODES = [
   "KIXI_AUTH_UNAUTHORIZED",
   "KIXI_AUTH_MFA_REQUIRED",
   "KIXI_VALIDATION_ERROR",
+  "KIXI_RATE_LIMIT_EXCEEDED",
+  "KIXI_PATH_TRAVERSAL_BLOCKED",
   "KIXI_UNKNOWN_ERROR",
 ] as const;
 
