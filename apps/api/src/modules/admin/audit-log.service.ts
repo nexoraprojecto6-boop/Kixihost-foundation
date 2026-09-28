@@ -19,7 +19,9 @@ export class AuditLogService {
         action,
         targetType,
         targetId,
-        ...(metadata !== undefined ? { metadata } : {}),
+        ...(metadata !== undefined
+          ? { metadata: metadata as Record<string, string | number | boolean | null> }
+          : {}),
       },
     });
   }
