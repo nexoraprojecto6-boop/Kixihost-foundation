@@ -37,6 +37,6 @@
     "@nestjs/cli": "^10.4.0",
     "@types/cookie-parser": "^1.4.7",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.7.0"
+    "@types/node": "^26.6.2"
   }
 }
