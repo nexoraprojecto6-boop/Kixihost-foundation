@@ -14,7 +14,7 @@
     "@kixihost/i18n": "workspace:*",
     "@kixihost/auth": "workspace:*",
     "@kixihost/shared": "workspace:*",
-    "next": "^14.2.0",
+    "next": "^16.3.5",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },
